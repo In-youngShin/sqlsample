@@ -1,4 +1,4 @@
-# Data analysis and retrieval program for a simulated university
+# Data Retrieval and Analysis Program for a Simulated University
 
 # Table of Contents
 - [Database](#Database)
