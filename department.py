@@ -21,7 +21,7 @@ import argparse
 import psycopg2
 import matplotlib.pyplot as plt
 
-# GLOBAL VARIABLES FOR POSTGRE SQL DATABASE======================================================
+# GLOBAL VARIABLES FOR POSTGRE SQL DATABASE
 DB_NAME  = 'university-db'    
 USER     = 'inyoungshin'        
 PASSWORD = ''                 
@@ -32,7 +32,7 @@ PORT     = '5432'
 class DatabaseConnection:
     """
     class for a database connection. 
-    with statement, It automatically establishes a connection to the database when the context is entered
+    with statement, it automatically establishes a connection to the database when the context is entered
     and closes the connection when the context is exited.
     """
     def __init__(self):
@@ -73,8 +73,7 @@ class DatabaseConnection:
         if exc_type or exc_val or exc_tb:
             print(f'Error: {exc_type}, {exc_val}, {exc_tb}')
 
-# Heper functions ==============================================================
-
+# HELPER FUNCTIONS
 def get_arg_terms():
     """
     Function to extract argument input
@@ -130,11 +129,25 @@ def get_valid_input(names):
         for i, name in enumerate(names, start=1):
             print(f"{i}: {name}")
 
-# =============================================================================================================
+# ==========================================================================================
 class Department:
+    """ Class for retrieving data regarding departments and analyzing them.  
+    
+    Attributes:
+        db_cursor: Database cursor object.
+        dept_names: List of department names.
+        total_years_sems: List of total years and semesters.
+        all_years: List of all years.
+        
+    Methods:
+        create_info_database(): Export metadata on tables and columns to a CSV file.
+        get_all_dept_names(): Retrieve all department names.
+        get_all_years_sem(): Retrieve all years and semesters.
+        dep_enrollment(): Export changes in student enrollment to a CSV file.
+        spec_dep_enrollment_by_year(): Plot student enrollment changes by department.
+        dep_salary_statistics(): Create salary statistics table and plots.
     """
-    class
-    """
+
     def __init__(self, db_cursor):
         
         self.db_cursor=db_cursor
