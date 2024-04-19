@@ -1,13 +1,19 @@
 """
-File containing classes for database connection and functions to extract 
-enrollment changes by year and instructor salary statistics by department. 
-All results will be exported as either CSV files or PNG plots by department. 
-Users can check enrollment changes for specific departments 
-by specifying the department in the command line. 
-Detailed instructions will be prompted while running the file.
+File containing classes for database connection and functions to extract metadata about database tables and columns, enrollment changes by year, and instructor salary statistics by department. Specific functions will be executed based on user input via command-line arguments.
 
-Usage: department.py
+Usage: department.py [-h] [-metadata] [-salary] [-enrollment]
+
+Options:
+  -h, --help      Show this help message and exit
+  -metadata       Export metadata about database tables and columns
+  -salary         Export salary statistics by department (plot and CSV)
+  -enrollment     Export enrollment changes by department (plot and CSV)
+
+All results will be exported as CSV files or PNG plots by department. 
+To export a plot showing enrollment changes for specific departments, specify the departments as prompted in the command line. Detailed instructions will be provided during execution.
+
 """
+import argparse
 import psycopg2
 import matplotlib.pyplot as plt
 
@@ -63,11 +69,27 @@ class DatabaseConnection:
         if exc_type or exc_val or exc_tb:
             print(f'Error: {exc_type}, {exc_val}, {exc_tb}')
 
-# =============================================================================================== 
+# Heper functions ==============================================================
+
+def get_arg_terms():
+    """
+    Function to extract argument input
+    """
+    parser = argparse.ArgumentParser(allow_abbrev=False)
+    parser.add_argument('-metadata', action='store_true',
+                       help='Export metadata about database tables and columns')
+    parser.add_argument('-salary', action='store_true',
+                       help='Export a plot and a CSV file containing salary statistics by department')
+    parser.add_argument('-enrollment', action='store_true',
+                       help='Export a CSV file and a plot showing enrollment changes by department')
+
+    args = parser.parse_args()
+
+    return args
 
 def write_results_to_csv(header: list, results: list, filename: str):
     """
-    A helper function to write results to a csv file.
+    Function to write results to a csv file.
     Args:
         header (list): a list of strings representing the header of the CSV
         results (list): a list of tuples, where each tuple is a row in the csv
@@ -82,49 +104,110 @@ def write_results_to_csv(header: list, results: list, filename: str):
             formatted_row = [str(element) for element in row]
             f.write(','.join(formatted_row) + '\n')
 
-def create_info_database(): 
+def get_valid_input(names):
     """
-    A function to export metadata on tables in the database to a CSV file.
+    Function to get valid input from users to specfy department names for the 
+    prompts the user until valid input is provided
+    Arg: 
+        name (list): list of strings representing all department names
     """
-    table_meta_query = """ SELECT s.table_name, s.column_name, s.data_type, STRING_AGG(c.constraint_name, ', ') AS constraint_names
-                            FROM information_schema.columns AS s
-                            LEFT JOIN information_schema.key_column_usage AS c 
-                                ON s.table_name = c.table_name AND s.column_name = c.column_name
-                            WHERE s.table_schema = 'public'
-                            GROUP BY s.table_name, s.column_name, s.data_type Order BY s.table_name; """
+    while True:
 
-    with DatabaseConnection() as cursor:
-       cursor.execute(table_meta_query)
-       table_meta_info = cursor.fetchall()
-       list_table_meta_info = []
-       for table_info in table_meta_info:
-            list_table_meta_info.append(table_info)
-             
-       header = ["Table Name","Column Name", "Data Type", "Constraints"]
-       write_results_to_csv(header, list_table_meta_info, 'table_info.csv')
-
-def dep_enrollment(): 
-    """
-    A function to export department enrollment changes by year and semester to a CSV file
-    """
-    #SQL query statement to extract data about department enrollment changes by year and semester 
-    Dep_enrollment_by_year = """ SELECT t.year, t.semester, c.dept_name, COUNT(distinct c.course_id) as total_course_num_dep, COUNT(distinct s.ID) AS total_student_enroll
-                            FROM course AS c 
-                            JOIN takes AS t ON t.course_id = c.course_id
-                            JOIN student AS s ON s.ID = t.ID
-                            GROUP BY t.year, t.semester, c.course_id, c.dept_name 
-                            ORDER BY t.year, t.semester, c.dept_name; """
-    list_results = []
-    years = []
-    semesters =[]
-    dept_names =[]
-    total_course_offer_num = []
-    total_student_enroll = []
-    
-    with DatabaseConnection() as cursor:
-        cursor.execute(Dep_enrollment_by_year)
-        results = cursor.fetchall()
+        input_dept = input("Enter department number(s) to check (single or multiple input, comma-separated): ")
+        str_dept_inputs = input_dept.split(",")
         
+        if all(dep.isdigit() for dep in str_dept_inputs):
+            int_dept_inputs = [int(dep) - 1 for dep in str_dept_inputs]
+            if all(0 <= dep < len(names) for dep in int_dept_inputs):
+                return int_dept_inputs
+        print("Invalid input")
+        print("Make sure to enter accurate department number (see below)")
+        for i, name in enumerate(names, start=1):
+            print(f"{i}: {name}")
+
+# =============================================================================================================
+class Department:
+    def __init__(self, db_cursor):
+        
+        self.db_cursor=db_cursor
+        self.dept_names = []
+        self.total_years_sems = []
+        self.all_years = []
+        
+    def create_info_database(self): 
+        """
+        A function to export metadata on tables in the database to a CSV file.
+        """
+        table_meta_query = """ SELECT s.table_name, s.column_name, s.data_type, STRING_AGG(c.constraint_name, ', ') AS constraint_names
+                                FROM information_schema.columns AS s
+                                LEFT JOIN information_schema.key_column_usage AS c 
+                                    ON s.table_name = c.table_name AND s.column_name = c.column_name
+                                WHERE s.table_schema = 'public'
+                                GROUP BY s.table_name, s.column_name, s.data_type Order BY s.table_name; """
+
+        self.db_cursor.execute(table_meta_query)
+        table_meta_info = self.db_cursor.fetchall()
+        list_table_meta_info = []
+        for table_info in table_meta_info:
+                list_table_meta_info.append(table_info)
+                
+        header = ["Table Name","Column Name", "Data Type", "Constraints"]
+        write_results_to_csv(header, list_table_meta_info, 'table_info.csv')
+        print("Metadata about Tables and Columns in database have been exported to 'table_info.csv'")
+    
+    def get_all_dept_names(self):
+        """
+        """
+        self.dept_names =[]
+        dept_name_query = """ SELECT dept_name FROM department; """
+        self.db_cursor.execute(dept_name_query)
+        data = self.db_cursor.fetchall()
+        for row in data: 
+            self.dept_names.append(row[0])
+
+
+    def get_all_years_sem(self): 
+        
+        self.all_years=[]
+        years_query = """ SELECT DISTINCT year FROM teaches; """
+        
+        self.db_cursor.execute(years_query)
+        year_data = self.db_cursor.fetchall()
+        for y in year_data:
+            self.all_years.append(y[0])  
+        
+        # Merge year and semester for plot labels for later use
+        self.total_years_sems=[]
+        min_year = min(self.all_years)
+        max_year = max(self.all_years)
+        while min_year <= max_year:
+            year_fall = str(min_year) + ' ' + 'Fall'
+            self.total_years_sems.append(year_fall)
+            year_spring = str(min_year) + ' ' + 'Spring'
+            self.total_years_sems.append(year_spring)
+            min_year += 1
+            
+    def dep_enrollment(self): 
+        """
+        A function to export department enrollment changes by year and semester to a CSV file
+        """
+        #SQL query statement to extract data about department enrollment changes by year and semester 
+        Dep_enrollment_by_year = """ SELECT t.year, t.semester, c.dept_name, COUNT(distinct c.course_id) as total_course_num_dep, COUNT(distinct s.ID) AS total_student_enroll
+                                FROM course AS c 
+                                JOIN takes AS t ON t.course_id = c.course_id
+                                JOIN student AS s ON s.ID = t.ID
+                                GROUP BY t.year, t.semester, c.course_id, c.dept_name 
+                                ORDER BY t.year, t.semester, c.dept_name; """
+        list_results = []
+        years = []
+        semesters =[]
+        dept_names =[]
+        total_course_offer_num = []
+        total_student_enroll = []
+        
+        self.db_cursor.execute(Dep_enrollment_by_year)
+        results = self.db_cursor.fetchall()
+            
         for row in results: 
             list_results.append(list(row))
             years.append(row[0])
@@ -132,128 +215,89 @@ def dep_enrollment():
             dept_names.append(row[2])
             total_course_offer_num.append(row[3])
             total_student_enroll.append(row[4])
-        
+            
         header = ['Year', 'Semesters', 'Department', 'Num of Offered Courses', 'Num of enrolled students']
         write_results_to_csv(header, list_results, 'dep_course_stat_by_year.csv')
+        print("Student Enrollments for courses offered by departments across years and semesters have been exported to 'dep_course_stat_by_year.csv'")
 
-def spec_dep_enrollment_by_year(): 
-    """
-    function to creat department enrollment change by years
-    Its results weill be exported to csv and png files.  
-    """ 
-    names =[]
-    years =[]
-    dept_name_query = """ SELECT dept_name FROM department; """
-    years_query = """ SELECT DISTINCT year FROM teaches; """
-    
-    with DatabaseConnection() as cursor:
-        cursor.execute(dept_name_query)
-        data = cursor.fetchall()
-        for row in data: 
-            names.append(row[0])
-        
-        cursor.execute(years_query)
-        year_data = cursor.fetchall()
-        for y in year_data:
-            years.append(y[0])
-    
-    # prompt to request users to specific department 
-    var = input("Do you want to check department enrollment change by years? (y/n): ")
-    if var.lower() in ['yes', 'y']:
-        for i, name in enumerate(names): 
-            num = i+1
-            print(f"{num}: {name}")
-        input_dept = input("Enter department number(s) to check. You can input a single number or multiple numbers (comma-separated): ")
-        str_dept_inputs = input_dept.split(",")
-        int_dept_inputs = [int(dep) for dep in str_dept_inputs]
-        print(int_dept_inputs)
-        while (max(int_dept_inputs) > len(name) and min(int_dept_inputs) < 1)or len(int_dept_inputs) == 0:
-            print(max(int_dept_inputs))
-            print(min(int_dept_inputs))
-            print("Wrong input\n")
-            print("Make sure to enter accurate department number (see below)")
-            for i, name in enumerate(names): 
+    def spec_dep_enrollment_by_year(self): 
+        """
+        A function to creat department enrollment change by years
+        Its results weill be exported to csv and png files.  
+        """ 
+        #get all deppartment names within the university 
+        self.get_all_dept_names()
+        #get all years and semsters when courses are offered 
+        self.get_all_years_sem()
+
+        # prompt to request users to specific department 
+        var = input("Do you want to check department enrollment change by years? (y/n): ")
+        if var.lower() in ['yes', 'y']:
+            for i, name in enumerate(self.dept_names, start=1): 
                 print(f"{i}: {name}")
-            dept = input("Enter department number(s) to check (single or multiple input, comma-separated):")
-    else: 
-        return # Exit function if user chooses not to see the enrollment
-    input_names =[names[index] for index in int_dept_inputs] 
-    
-    input_dep_enrollment_by_year = """ SELECT c.dept_name, t.year, t.semester, COUNT(distinct s.ID) AS total_student_enroll
-                            FROM course AS c 
-                            JOIN takes AS t ON t.course_id = c.course_id
-                            JOIN student AS s ON s.ID = t.ID 
-                            WHERE c.dept_name IN ({})""".format(','.join(['%s'] * len(input_names)))
+            int_dept_inputs = get_valid_input(self.dept_names)
+        else: 
+            return # Exit function if users choose not to see the enrollment
 
-    input_dep_enrollment_by_year += """ GROUP BY c.dept_name, t.year, t.semester 
-                ORDER BY c.dept_name, t.year, t.semester; """
+        input_names =[self.dept_names[index] for index in int_dept_inputs] 
+        
+        input_dep_enrollment_by_year = """ SELECT c.dept_name, t.year, t.semester, COUNT(distinct s.ID) AS total_student_enroll
+                                FROM course AS c 
+                                JOIN takes AS t ON t.course_id = c.course_id
+                                JOIN student AS s ON s.ID = t.ID 
+                                WHERE c.dept_name IN ({})""".format(','.join(['%s'] * len(input_names)))
 
-    # Merge year and semester for plot labels for later use
-    total_years_sems = []
-    year = min(years)
-    max_year = max(years)
-    while year <= max_year:
-        year_fall = str(year) + ' ' + 'Fall'
-        total_years_sems.append(year_fall)
-        year_spring = str(year) + ' ' + 'Spring'
-        total_years_sems.append(year_spring)
-        year += 1
+        input_dep_enrollment_by_year += """ GROUP BY c.dept_name, t.year, t.semester 
+                    ORDER BY c.dept_name, t.year, t.semester; """
 
+        plot_data = {}
+        for name in input_names: 
+            plot_data[name] = {'year':[], 'enroll':[]}
 
-    plot_data = {}
-    for name in input_names: 
-        plot_data[name] = {'year':[], 'enroll':[]}
+        self.db_cursor.execute(input_dep_enrollment_by_year, input_names)
+        outputs = self.db_cursor.fetchall()
 
-    with DatabaseConnection() as cursor:
-        cursor.execute(input_dep_enrollment_by_year, input_names)
-        outputs = cursor.fetchall()
-        print(outputs)
         for row in outputs:
             year_sem = str(row[1]) + ' ' + row[2]
             plot_data[row[0]]['year'].append(year_sem)
             plot_data[row[0]]['enroll'].append(row[3])
 
-
-    for name in input_names:   
-        no_miss_dep_stu_enroll=[]
-        for year_sem in total_years_sems:
-            if year_sem not in plot_data[name]['year']: 
-                no_miss_dep_stu_enroll.append(0)
-            else: 
-                i = plot_data[name]['year'].index(year_sem)
-                no_miss_dep_stu_enroll.append(plot_data[name]['enroll'][i])
-        plot_data[name]['enroll'] = no_miss_dep_stu_enroll
-        plot_data[name]['year'] = total_years_sems
-    
-    #create line plot for enrollment changes by department
-    plt.figure(figsize=(10, 5))
-    for dep_name in input_names:
-        print(total_years_sems)
-        print(plot_data[dep_name]['enroll'])
-        plt.plot(total_years_sems, plot_data[dep_name]['enroll'], marker='o', label=dep_name)
-    plt.xlabel('Year Semester')
-    plt.xticks(rotation=45)
-    plt.ylabel('Student Enrollment')
-    plt.title('Department Student Enrollment by Year')
-    plt.legend()
-    plt.savefig('dept_enrollment.png')
-    plt.show()
+        for name in input_names:   
+            no_miss_dep_stu_enroll=[]
+            for year_sem in self.total_years_sems:
+                if year_sem not in plot_data[name]['year']: 
+                    no_miss_dep_stu_enroll.append(0)
+                else: 
+                    i = plot_data[name]['year'].index(year_sem)
+                    no_miss_dep_stu_enroll.append(plot_data[name]['enroll'][i])
+            plot_data[name]['enroll'] = no_miss_dep_stu_enroll
+        
+        #create line plot for enrollment changes by department
+        plt.figure(figsize=(10, 5))
+        for dep_name in input_names:
+            plt.plot(self.total_years_sems, plot_data[dep_name]['enroll'], marker='o', label=dep_name)
+        plt.xlabel('Year Semester')
+        plt.xticks(rotation=45)
+        plt.ylabel('Student Enrollment')
+        plt.title('Department Student Enrollment by Year')
+        plt.legend()
+        plt.savefig('dept_enrollment.png')
+        plt.show()
  
-def dep_salary_statistics():
-    """
-    function to creat salary_statistics table and plots 
-    containing the median, average, and standard deviation of instructor salaries by department.
-    Its results weill be exported to csv and png files.  
-    """
+    def dep_salary_statistics(self):
+        """
+        A function to creat salary_statistics table and plots 
+        containing the median, average, and standard deviation of instructor salaries by department.
+        Its results weill be exported to csv and png files.  
+        """
 
-    Dep_Sal_Stat = """SELECT dept_name, COUNT(distinct ID), PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY salary) AS median_salary,
-                avg(salary) AS average_salary, STDDEV_POP(salary) AS std_dev_salary
-            FROM instructor
-            GROUP BY dept_name;"""
+        Dep_Sal_Stat = """SELECT dept_name, COUNT(distinct ID), PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY salary) AS median_salary,
+                    avg(salary) AS average_salary, STDDEV_POP(salary) AS std_dev_salary
+                FROM instructor
+                GROUP BY dept_name;"""
 
-    with DatabaseConnection() as cursor:
-        cursor.execute(Dep_Sal_Stat)
-        results = cursor.fetchall()
+        self.db_cursor.execute(Dep_Sal_Stat)
+        results = self.db_cursor.fetchall()
         list_results = []
         dept_names =[]
         num_instructor = []
@@ -291,12 +335,23 @@ def dep_salary_statistics():
 
         header = ['Department', 'Numboer of Instructors', 'Median Salary',  'Average Salaries', 'Std Dev Salary']
         write_results_to_csv(header, list_results, 'dep_salary_stat.csv')
+        print("Instructor salary statistics by departments have been exported to 'dep_salary_stat.csv'")
     
 if __name__ == '__main__':
-    create_info_database()
-    dep_salary_statistics()
-    dep_enrollment()
-    spec_dep_enrollment_by_year()
+    
+    arg_option=get_arg_terms()
 
+    with DatabaseConnection() as cursor:
+        department = Department(cursor)
+        if arg_option.metadata:
+            department.create_info_database()
+        if arg_option.salary:
+            department.dep_salary_statistics()
+        if arg_option.enrollment:
+            department.dep_enrollment()
+            department.spec_dep_enrollment_by_year()
+
+
+    
 
 
