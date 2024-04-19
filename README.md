@@ -56,7 +56,8 @@ Usage: python3 course_overlap.py
 ## Requriements
 To run this program, Python version 3.10 or later Postgresql 16.1 or later are needed. 
 Additionally, make sure you have the following Python packages installed: 
-    >> argparse (version >= 1.4.0), matplotlib, and psycopg2.
+
+> * argparse (version >= 1.4.0), matplotlib, and psycopg2.
 
 All the necessary packages are listed in the requirements.txt file. 
 To install them, execute the following command:

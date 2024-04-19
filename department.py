@@ -11,8 +11,10 @@ Options:
   -salary         Export salary statistics by department (plot and CSV)
   -enrollment     Export enrollment changes by department (plot and CSV)
 
-All results will be exported as CSV files or PNG plots by department. 
-To export a plot showing enrollment changes for specific departments, specify the departments as prompted in the command line. Detailed instructions will be provided during execution.
+All results will be exported as CSV or PNG files. 
+To export a plot showing student enrollment changes for specific departments, 
+users need to specify departments in the command line. 
+Detailed instructions will be provided during execution.
 
 """
 import argparse

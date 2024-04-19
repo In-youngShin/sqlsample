@@ -1,15 +1,15 @@
 """
-A program for fiding overlapping sections
+Program for finding overlapping sections
 
-This task involves the creation of a new table called `overlapping_sections` that
-contains all pairs of sections that overlap. Join the section and time_slot tables
-to get the section and time slot details for each section. For each pair of sections
-that overlap, write the course ID, section ID, and time range that the sections overlap for 
-to the `overlapping_sections` table.
+This program creates a new table called overlapping_sections that 
+contains all pairs of sections that overlap and exports their data to a CSV file.
 
-E.g., the following two sections overlap on Monday from 10:00 to 10:15:
-    CPSC-437-001, Monday, 2017, fall, 09:00-10:15
-    CPSC-237-002, Monday, 2017, fall, 10:00-10:45
+For each pair of overlapping sections, 
+their course ID, section ID, and the time range during which the sections overlap will be exported to the CSV file.
+
+For example, consider the following two sections that overlap on Monday from 10:00 to 10:15:
+    Course: CPSC-437-001, Day: Monday, Year: 2017, Semester: Fall, Time: 09:00-10:15
+    Course: CPSC-237-002, Day: Monday, Year: 2017, Semester: Fall, Time: 10:00-10:45
 """
 from typing import TypedDict
 
@@ -128,7 +128,7 @@ def is_overlap(slot1: TimeSlotInfo, slot2: TimeSlotInfo) -> None or tuple[str, s
 
 def course_overlap():
     """
-    
+    Function to create table and export a csv file
     """
     create_overlapping_sections_table_if_not_exists()
 
