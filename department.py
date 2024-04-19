@@ -1,5 +1,7 @@
 """
-File containing classes for database connection and functions to extract metadata about database tables and columns, enrollment changes by year, and instructor salary statistics by department. Specific functions will be executed based on user input via command-line arguments.
+File containing classes for database connection and to extract metadata about database tables and columns, 
+student enrollment changes by year, and instructor salary statistics by department. 
+Specific functions will be executed based on user input via command-line arguments.
 
 Usage: department.py [-h] [-metadata] [-salary] [-enrollment]
 
@@ -128,6 +130,9 @@ def get_valid_input(names):
 
 # =============================================================================================================
 class Department:
+    """
+    class
+    """
     def __init__(self, db_cursor):
         
         self.db_cursor=db_cursor
@@ -161,7 +166,7 @@ class Department:
     
     def get_all_dept_names(self):
         """
-        Function to retrieve all department name within the university
+        Function to retrieve all department names within the university
         
         """
         self.dept_names =[]
