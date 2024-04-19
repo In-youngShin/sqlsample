@@ -53,7 +53,7 @@ All results will be exported as CSV files.
 Usage: python3 course_overlap.py
 ```
 
-## Requriements
+## Requirement
 To run this program, Python version 3.10 or later Postgresql 16.1 or later are needed. 
 Additionally, make sure you have the following Python packages installed: 
 
