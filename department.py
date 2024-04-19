@@ -106,10 +106,11 @@ def write_results_to_csv(header: list, results: list, filename: str):
 
 def get_valid_input(names):
     """
-    Function to get valid input from users to specfy department names for the 
-    prompts the user until valid input is provided
+    Function to get valid input from users to specfy department names for student enrollment changes across years
+    It continuously prompts the user until valid input is provided
+    
     Arg: 
-        name (list): list of strings representing all department names
+        name (list): a list of strings representing all department names
     """
     while True:
 
@@ -136,7 +137,10 @@ class Department:
         
     def create_info_database(self): 
         """
-        A function to export metadata on tables in the database to a CSV file.
+        Function to export metadata on tables and columns in the database to a CSV file.
+        The csv files will contain the following information: 
+            "Table Name", "Column Name", "Data Type", "Constraints"
+
         """
         table_meta_query = """ SELECT s.table_name, s.column_name, s.data_type, STRING_AGG(c.constraint_name, ', ') AS constraint_names
                                 FROM information_schema.columns AS s
@@ -157,6 +161,8 @@ class Department:
     
     def get_all_dept_names(self):
         """
+        Function to retrieve all department name within the university
+        
         """
         self.dept_names =[]
         dept_name_query = """ SELECT dept_name FROM department; """
@@ -167,6 +173,11 @@ class Department:
 
 
     def get_all_years_sem(self): 
+        """
+        Function to retrieve all years and semesters 
+        when all courses are offered within the univesity
+        
+        """
         
         self.all_years=[]
         years_query = """ SELECT DISTINCT year FROM teaches; """
@@ -189,7 +200,12 @@ class Department:
             
     def dep_enrollment(self): 
         """
-        A function to export department enrollment changes by year and semester to a CSV file
+        Function to export changes in student course enrollment across 
+        departments by year and semester to a CSV file. 
+        The CSV file will contain the following information will be exported: 
+          Department name, 
+          The number of courses offered within that department, 
+          The number of students taking the courses
         """
         #SQL query statement to extract data about department enrollment changes by year and semester 
         Dep_enrollment_by_year = """ SELECT t.year, t.semester, c.dept_name, COUNT(distinct c.course_id) as total_course_num_dep, COUNT(distinct s.ID) AS total_student_enroll
@@ -222,8 +238,10 @@ class Department:
 
     def spec_dep_enrollment_by_year(self): 
         """
-        A function to creat department enrollment change by years
-        Its results weill be exported to csv and png files.  
+        Function to plot the number of student enrollment changes within specific departments across years. 
+        Prompts will appear for users to specify departments they want to examine. 
+        The results will be exported to a PNG file.
+
         """ 
         #get all deppartment names within the university 
         self.get_all_dept_names()
@@ -272,7 +290,7 @@ class Department:
                     no_miss_dep_stu_enroll.append(plot_data[name]['enroll'][i])
             plot_data[name]['enroll'] = no_miss_dep_stu_enroll
         
-        #create line plot for enrollment changes by department
+        #create line plot for student enrollment changes by department
         plt.figure(figsize=(10, 5))
         for dep_name in input_names:
             plt.plot(self.total_years_sems, plot_data[dep_name]['enroll'], marker='o', label=dep_name)
@@ -286,9 +304,15 @@ class Department:
  
     def dep_salary_statistics(self):
         """
-        A function to creat salary_statistics table and plots 
-        containing the median, average, and standard deviation of instructor salaries by department.
-        Its results weill be exported to csv and png files.  
+        Function to create a salary_statistics table and 
+        plots containing the median, average, and standard deviation of instructor salaries by department. 
+        The results will be exported to both CSV and PNG files. 
+        The CSV file will contain the following information: 
+          'Department', 
+          'Number of Instructors', 
+          'Median Salary', 
+          'Average Salary', 
+          'Standard Deviation of Salary' 
         """
 
         Dep_Sal_Stat = """SELECT dept_name, COUNT(distinct ID), PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY salary) AS median_salary,
